@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🍻 Wszystkiego najlepszego!</title>
+  <meta name="description" content="Życzenia."/>
+  <style>
+    :root{
+      --bg1:#d0f0ff; --bg2:#99caff; --ink:#102030; --accent:#0077cc; --card:#ffffffcc;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Color Emoji";
+      color:var(--ink);
+      background: radial-gradient(1200px 800px at 20% 10%, #f0f8ff 0%, #cce8ff 40%, transparent 60%),
+                  linear-gradient(135deg, var(--bg1), var(--bg2));
+      overflow-x:hidden;
+    }
+    .wrap{min-height:100%; display:flex; align-items:center; justify-content:center; padding:48px 16px;}
+    .card{
+      position:relative; width:min(900px, 92vw); padding:32px 24px 28px; border-radius:28px;
+      background: var(--card); backdrop-filter:saturate(140%) blur(8px);
+      box-shadow:0 30px 80px 0 rgba(0,0,0,.15); text-align:center;
+      z-index:2;
+    }
+    h1{font-size:clamp(32px, 6vw, 56px); margin:6px 0 10px; letter-spacing:.5px}
+    .wish{
+      font-size:clamp(18px, 3vw, 22px);
+      line-height:1.7;
+      margin:18px auto 22px;
+      max-width:60ch;
+      white-space:pre-line;
+      text-align:left;
+    }
+    .btns{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:8px}
+    button{
+      border:0; border-radius:999px; padding:12px 18px; font-weight:700; cursor:pointer;
+      background:linear-gradient(135deg,#80d4ff,#3399ff); color:#002244; box-shadow:0 8px 20px rgba(0,80,255,.25);
+      transition:transform .15s ease;
+    }
+    button:hover{transform:scale(1.05)}
+    .beers{
+      position:fixed; inset:0; pointer-events:none; overflow:hidden;
+      z-index:1;
+    }
+    .beer{position:absolute; bottom:-20vh; font-size:40px; animation: float var(--t) linear infinite; transform:translateX(-50%);}
+    @keyframes float {
+      0%{transform:translate(-50%, 0) rotate(2deg)}
+      50%{transform:translate(calc(-50% + var(--wobble, 20px)), -50vh) rotate(-2deg)}
+      100%{transform:translate(-50%, -110vh) rotate(1deg)}
+    }
+    canvas#confetti{ position:fixed; inset:0; pointer-events:none; z-index:3; }
+    .photos{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:4; }
+    .photo{ position:absolute; border-radius:16px; box-shadow:0 18px 40px rgba(0,0,0,.25);
+            transform-origin:center; opacity:0; animation: photo-in .6s ease forwards; }
+    @keyframes photo-in{ from{ transform:translateY(30px) scale(.9) rotate(var(--r)); opacity:0 } to{ transform:translateY(0) scale(1) rotate(var(--r)); opacity:1 } }
+    @keyframes photo-out{ to{ transform:translateY(-20px) scale(.98) rotate(calc(var(--r) + 2deg)); opacity:0 } }
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .4s ease; z-index:999; }
+    .overlay.visible { opacity:1; pointer-events:auto; }
+    .overlay img { max-width:90vw; max-height:90vh; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.5); animation: zoomin .4s ease; }
+    .corner-btn {
+      position:fixed; bottom:20px; right:20px;
+      background:white; color:#002244; font-weight:700; border:none; border-radius:999px;
+      padding:14px 20px; font-size:16px; cursor:pointer;
+      box-shadow:0 6px 16px rgba(0,80,255,.25); transition:transform .15s ease; z-index:10;
+    }
+    .corner-btn:hover { transform:scale(1.08); }
+  </style>
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+  <div class="beers" id="beers" aria-hidden="true"></div>
+  <div class="photos" id="photos" aria-hidden="true"></div>
+  <div class="overlay" id="overlay"><img src="image6.jpg" alt="Duże zdjęcie"></div>
+  <div class="wrap">
+    <main class="card" role="main">
+      <h1>Wszystkiego Najlepszego! 🎉</h1>
+      <p class="wish" id="wish"></p>
+      <div class="btns">
+        <button id="btnParty">Otwórz prezent 🎁</button>
+      </div>
+      <audio id="song" src="muzyka.mp3" preload="none"></audio>
+    </main>
+  </div>
+  <button class="corner-btn" id="btnShowPhoto">Moje nagie zdjęcia</button>
+  <script>
+    const DEFAULT_WISH = `Życzę Ci:
+- zdrowia, szczęścia, pieniędzy itd.
+- kasy, chlania i ruchania
+- piwa i wódki
+- zdrowych kolan
+- żeby praca w końcu sama się napisała i najlepiej jeszcze obroniła
+- przeżycia co najmniej KILKUDZIESIĘCIU lat
+- żebyś w pracy miał jak najmniej do zrobienia, wszyscy odwalali robotę za Ciebie, no i własnego samochodu
+- znowu piwa i wódki
+- żeby w krzyżu nie łupało
+- no i jeszcze wszystkiego co sobie zamarzysz`;
+    const params = new URLSearchParams(location.search);
+    const wishParam = (params.get('zyczenia') || '').trim();
+    const fullWish = wishParam || DEFAULT_WISH;
+    const wishEl = document.getElementById('wish');
+    let i = 0; (function type(){ if(i<=fullWish.length){ wishEl.textContent=fullWish.slice(0,i++); setTimeout(type,22);} })();
+
+    const beersWrap = document.getElementById('beers');
+    const beerEmojis = ['🍺','🍻'];
+    function spawnBeer(){
+      const b=document.createElement('div'); b.className='beer';
+      b.style.left = (Math.random()*100)+'vw';
+      b.textContent = beerEmojis[Math.random()*beerEmojis.length|0];
+      b.style.setProperty('--t', (18+Math.random()*14)+'s');
+      b.style.setProperty('--wobble', (10+Math.random()*30)+'px');
+      beersWrap.appendChild(b); setTimeout(()=>b.remove(), 32000);
+    }
+    setInterval(spawnBeer, 450); for(let k=0;k<12;k++) spawnBeer();
+
+    const cv = document.getElementById('confetti'); const cx = cv.getContext('2d');
+    let W,H; function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; } addEventListener('resize',resize); resize();
+    const confettiColors = ['#3399ff','#99ccff','#cce5ff','#66b2ff','#80d4ff'];
+    const pieces=[]; function burst(x,y){ for(let i=0;i<180;i++){ pieces.push({x,y,vx:(Math.random()-.5)*8,vy:(Math.random()-1)*8-Math.random()*6,w:6+Math.random()*6,h:10+Math.random()*10,r:Math.random()*Math.PI,vr:(Math.random()-.5)*.4,c:confettiColors[Math.random()*confettiColors.length|0],a:1}); } if(!anim) animate(); }
+    let anim=null; function animate(){ cancelAnimationFrame(anim); anim=requestAnimationFrame(animate); cx.clearRect(0,0,W,H); for(const p of pieces){ p.vy+=.18; p.x+=p.vx; p.y+=p.vy; p.r+=p.vr; p.a-=.006; }
+      for(let i=pieces.length-1;i>=0;i--){ if(pieces[i].a<=0||pieces[i].y>H+40) pieces.splice(i,1);} for(const p of pieces){ cx.save(); cx.globalAlpha=Math.max(0,p.a); cx.translate(p.x,p.y); cx.rotate(p.r); cx.fillStyle=p.c; cx.fillRect(-p.w/2,-p.h/2,p.w,p.h); cx.restore(); } if(!pieces.length){ cancelAnimationFrame(anim); anim=null; } }
+
+    const photosWrap = document.getElementById('photos');
+    const photoPool = ['image1.jpg','image2.jpg','image3.jpg','image4.jpg','image5.jpg'];
+    function showPhotos(count=5){
+      const shuffled=[...photoPool].sort(()=>Math.random()-.5).slice(0,count);
+      for(const src of shuffled) addPhoto(src);
+    }
+    function addPhoto(src){
+      const img=document.createElement('img'); img.className='photo'; img.src=src; img.alt='prezent';
+      const w=120+Math.random()*140; const margin=20;
+      const x=margin+Math.random()*(innerWidth - w - margin*2);
+      const y=margin+Math.random()*(innerHeight - 240 - margin*2);
+      const rot=(Math.random()*20-10).toFixed(2)+'deg';
+      img.style.width=w+'px'; img.style.left=x+'px'; img.style.top=y+'px'; img.style.setProperty('--r', rot);
+      photosWrap.appendChild(img);
+      const life=5000+Math.random()*3000; setTimeout(()=>{ img.style.animation='photo-out .6s ease forwards'; setTimeout(()=>img.remove(),600); }, life);
+    }
+
+    const btnParty = document.getElementById('btnParty');
+    btnParty.addEventListener('click', () => {
+      const rect = document.querySelector('.card').getBoundingClientRect();
+      burst(rect.left + rect.width/2, rect.top + rect.height/2);
+      showPhotos(5);
+      const song = document.getElementById('song'); song?.play?.().catch(()=>{});
+    });
+
+    const btnShowPhoto = document.getElementById('btnShowPhoto');
+    const overlay = document.getElementById('overlay');
+    btnShowPhoto.addEventListener('click', ()=> overlay.classList.add('visible'));
+    overlay.addEventListener('click', ()=> overlay.classList.remove('visible'));
+  </script>
+</body>
+</html>
